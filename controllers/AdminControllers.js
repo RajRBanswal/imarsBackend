@@ -385,6 +385,7 @@ exports.acceptPackageRequest = async (req, res) => {
           packageId: packageId,
           packageName: packageName,
           packageAmount: amount,
+          kycstatus: "Done",
         }
       );
       res.json({

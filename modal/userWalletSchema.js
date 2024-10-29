@@ -20,6 +20,8 @@ const userWalletSchema = new mongoose.Schema(
     transactionTime: String,
     reason: String,
     transactionId: String,
+    cUserId: String,
+    cUserName: String,
   },
   { timestamps: true }
 );

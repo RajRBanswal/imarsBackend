@@ -32,6 +32,10 @@ const {
   getAllTopUpRequest,
   buyPackageRequest,
   userCashbackWallet,
+  changePassword,
+  updateBankDetails,
+  fundTransfer,
+  userPetrolCardWallet,
 } = require("../controllers/UserControllers");
 const router = express.Router();
 
@@ -77,6 +81,14 @@ router.post(
 );
 
 router.post("/api/users/users-cashback-wallet", userCashbackWallet);
+
+router.post("/api/users/change-password", changePassword);
+
+router.post("/api/users/update-bank-details", updateBankDetails);
+
+router.post("/api/users/fund-tranfer", fundTransfer);
+
+router.post("/api/users/user-petrol-card-wallet", userPetrolCardWallet);
 
 // Admin Routes
 router.post("/api/admin/admin-login", AdminLogin);

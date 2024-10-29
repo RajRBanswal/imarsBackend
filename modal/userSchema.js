@@ -36,6 +36,11 @@ const UserSchema = new mongoose.Schema(
     status: String,
     pan: String,
     aadhar: String,
+    accNo: String,
+    ifscCode: String,
+    branchName: String,
+    bankName: String,
+    accHolderName: String,
     kycstatus: String,
     profile_image: String,
     cardStatus: String,
@@ -59,7 +64,6 @@ UserSchema.pre("save", async function (next) {
   if (!this._id) {
     try {
       const nextId = await getNextSequence("user_id");
-      console.log("Generated ID:", nextId);
       this._id = "IZ" + padNumber(nextId);
     } catch (error) {
       return next(error);
