@@ -8,6 +8,7 @@ const PointsManagament = require("../modal/pointManagementSchema");
 const PackageRequest = require("../modal/packageRequestSchema");
 const UserCashbackWallet = require("../modal/userCashbackWalletSchema");
 const PetrolCardWallet = require("../modal/petrolCardWalletSchema");
+const PrepaidCardWallet = require("../modal/userPrepaidCardWalletSchema");
 
 exports.getUserProfile = async (req, res) => {
   const userId = req.body.userId;
@@ -47,49 +48,6 @@ exports.allReferUsers = async (req, res) => {
   }
 };
 
-exports.updateUserProfile = async (req, res) => {
-  let profile_image = "";
-  let { names, emails, mobiles, addresss } = "";
-
-  const { userId, name, email, mobile, address } = req.body;
-
-  const userExists = await Users.findOne({ _id: userId });
-
-  if (
-    req.body.profile_image === undefined ||
-    req.body.profile_image === "" ||
-    req.body.profile_image === null
-  ) {
-    profile_image = userExists.profile_image;
-  } else {
-    profile_image = req.file.filename;
-  }
-  if (userExists) {
-    name ? (names = name) : (names = userExists.name);
-    email ? (emails = email) : (emails = userExists.email);
-    mobile ? (mobiles = mobile) : (mobiles = userExists.mobile);
-    address ? (addresss = address) : (addresss = userExists.address);
-
-    const user = await Users.findOneAndUpdate(
-      { _id: userId },
-      {
-        name: names,
-        email: emails,
-        mobile: mobiles,
-        address: addresss,
-        profile_image: profile_image,
-      }
-    );
-    if (user) {
-      res.json({ status: 201, result: "User Updated successfully" });
-    } else {
-      res.json({ status: 422, result: "User not updated" });
-    }
-  } else {
-    res.json({ status: 422, result: "User not exists" });
-  }
-};
-
 exports.changePassword = async (req, res) => {
   let { userId, newPassword } = req.body;
   const userExists = await Users.findOne({ _id: userId });
@@ -98,6 +56,7 @@ exports.changePassword = async (req, res) => {
       { _id: userId },
       {
         password: newPassword,
+        stringPassword: newPassword,
       }
     );
     if (user) {
@@ -114,8 +73,6 @@ exports.updateBankDetails = async (req, res) => {
   let { pans, accNos, ifscCodes, branchNames, bankNames, accHolderNames } = "";
   const { PANs, bankName, branchName, accNo, ifscCode, accHolderName, userId } =
     req.body;
-
-  console.log(req.body);
 
   const userExists = await Users.findOne({ _id: userId });
   if (userExists) {
@@ -145,6 +102,60 @@ exports.updateBankDetails = async (req, res) => {
       res.json({ status: 201, result: "Bank Details Updated successfully" });
     } else {
       res.json({ status: 422, result: "Bank Details not updated" });
+    }
+  } else {
+    res.json({ status: 422, result: "User not exists" });
+  }
+};
+
+exports.updateUserProfile = async (req, res) => {
+  let profile_image = "";
+
+  let { names, emails, mobiles, addresss, talukas, citys, states, pincodes } =
+    "";
+
+  const { userId, name, email, mobile, address, taluka, city, state, pincode } =
+    req.body;
+
+  const userExists = await Users.findOne({ _id: userId });
+
+  if (
+    req.body.profile_image === "undefined" ||
+    req.body.profile_image === "" ||
+    req.body.profile_image === null
+  ) {
+    profile_image = userExists.profile_image;
+  } else {
+    profile_image = req.file.filename;
+  }
+  if (userExists) {
+    name ? (names = name) : (names = userExists.name);
+    email ? (emails = email) : (emails = userExists.email);
+    mobile ? (mobiles = mobile) : (mobiles = userExists.mobile);
+    address ? (addresss = address) : (addresss = userExists.address);
+    taluka ? (talukas = taluka) : (talukas = userExists.taluka);
+    city ? (citys = city) : (citys = userExists.city);
+    state ? (states = state) : (states = userExists.state);
+    pincode ? (pincodes = pincode) : (pincodes = userExists.pincode);
+
+    const user = await Users.findOneAndUpdate(
+      { _id: userId },
+      {
+        name: names,
+        email: emails,
+        mobile: mobiles,
+        address: addresss,
+        taluka: talukas,
+        city: citys,
+        state: states,
+        pincode: pincodes,
+        profile_image: profile_image,
+      }
+    );
+    if (user) {
+      res.json({ status: 201, result: "User Updated successfully" });
+    } else {
+      res.json({ status: 422, result: "User not updated" });
     }
   } else {
     res.json({ status: 422, result: "User not exists" });
@@ -209,12 +220,16 @@ exports.UserRegister = async (req, res) => {
       cardStatus: "Pending",
       status: "Active",
       kycstatus: "Pending",
+      packageId: "",
+      packageName: "",
+      packageAmount: "",
     });
 
     await user.save();
     res.json({
       status: 200,
       result: "User created successfully",
+      user: user,
     });
   } else {
     res.json({
@@ -240,9 +255,9 @@ exports.ReferUserRegister = async (req, res) => {
 
   let getUserWallet = await UserWallet.find().sort({ $natural: -1 });
   getUserWallet.map((item) => {
-    if (item.type === "Credit") {
+    if (item.type === "Credit" && item.amountStatus === "Done") {
       userWalletAmount += parseInt(item.amount);
-    } else if (item.type === "Debit") {
+    } else if (item.type === "Debit" && item.amountStatus === "Done") {
       userWalletAmount -= parseInt(item.amount);
     }
   });
@@ -275,341 +290,349 @@ exports.ReferUserRegister = async (req, res) => {
       address,
       password,
       stringPassword: password,
-      profile_image:
-        image == undefined || image === "" ? "" : req.file.filename,
+      profile_image: image == undefined || image == "" ? "" : req.file.filename,
       cardStatus: "Pending",
       status: "Active",
       kycstatus: "Pending",
       sponsorId: referenceId || null,
+      packageId: "",
+      packageName: "",
+      packageAmount: "",
     });
-
-    console.log(user);
 
     const sponsorLevel1 = await Users.findById(referenceId);
     const sponsorIds = await Users.find({ sponsorId: referenceId });
 
-    // if (sponsorIds.length < 10) {
-    //   const MainUser = await Users.findOne({ _id: referenceId });
-    //   if (
-    //     (MainUser.packageName !== undefined || MainUser.packageName !== "") &&
-    //     MainUser.packageName !== "Paithani Sarees + Prepaid Card"
-    //   ) {
-    //     await UserCashbackWallet.create({
-    //       adminId: "",
-    //       adminName: "",
-    //       amount: 50,
-    //       userId: MainUser._id,
-    //       userName: MainUser.name,
-    //       userMobile: MainUser.mobile,
-    //       openingBalance: "",
-    //       type: "Credit",
-    //       status: "Success",
-    //       reason: `Gift Card Cashback`,
-    //       paymode: "",
-    //       utrNo: "",
-    //       transactionDate: date,
-    //       transactionTime: time,
-    //       transactionId: transactionId,
-    //     });
-    //     await AdminWallet.create({
-    //       adminId: "670cb3f3ee78c45f512c47a9",
-    //       openingBalance: adminWalletAmount,
-    //       type: "Debit",
-    //       status: "Success",
-    //       amount: 50,
-    //       userId: MainUser._id,
-    //       userName: MainUser.name,
-    //       userMobile: MainUser.mobile,
-    //       userWalletAmount: "",
-    //       reason: `Gift Card Cashback`,
-    //       transactionDate: date,
-    //       transactionTime: time,
-    //       transactionId: transactionId,
-    //       amountStatus: "Done",
-    //     });
-    //   }
+    if (sponsorIds.length <= 10) {
+      const MainUser = await Users.findOne({ _id: referenceId });
+      if (
+        MainUser.packageName ==
+        "Petrol Card + 500 Load + Gift Card (50/Referral)"
+      ) {
+        await UserCashbackWallet.create({
+          adminId: "",
+          adminName: "",
+          amount: 50,
+          userId: MainUser._id,
+          userName: MainUser.name,
+          userMobile: MainUser.mobile,
+          openingBalance: "",
+          type: "Credit",
+          status: "Success",
+          reason: `Gift Card Cashback`,
+          paymode: "",
+          utrNo: "",
+          transactionDate: date,
+          transactionTime: time,
+          transactionId: transactionId,
+          cUserId: mobile,
+          cUserName: name,
+          amountStatus: "Pending",
+        });
+        await AdminWallet.create({
+          adminId: "670cb3f3ee78c45f512c47a9",
+          openingBalance: adminWalletAmount,
+          type: "Debit",
+          status: "Success",
+          amount: 50,
+          userId: MainUser._id,
+          userName: MainUser.name,
+          userMobile: MainUser.mobile,
+          userWalletAmount: "",
+          reason: `Gift Card Cashback`,
+          transactionDate: date,
+          transactionTime: time,
+          transactionId: transactionId,
+          amountStatus: "Done",
+        });
+      }
 
-    //   const updateWallet = async (
-    //     points,
-    //     userId,
-    //     userName,
-    //     userMobile,
-    //     level
-    //   ) => {
-    //     const getTotal = (array) => {
-    //       let total = 0;
-    //       array.map((item) => {
-    //         if (item.type === "Credit") {
-    //           total += parseInt(item.amount);
-    //         }
-    //       });
-    //       return total;
-    //     };
-    //     const userData = await Users.findById(userId);
-    //     const walletAmountS = await UserWallet.find({
-    //       userId: userId,
-    //       transactionDate: date,
-    //     });
-    //     if (
-    //       walletAmountS === null ||
-    //       walletAmountS === "" ||
-    //       getTotal(walletAmountS) < 2001
-    //     ) {
-    //       await AdminWallet.create({
-    //         adminId: "670cb3f3ee78c45f512c47a9",
-    //         openingBalance: adminWalletAmount,
-    //         type: "Debit",
-    //         status: "Success",
-    //         amount: points.price,
-    //         userId: userId,
-    //         userName: userData.name,
-    //         userMobile: userData.mobile,
-    //         userWalletAmount: "",
-    //         reason: `Refer & Earn Level ${level}`,
-    //         transactionDate: date,
-    //         transactionTime: time,
-    //         transactionId: transactionId,
-    //         amountStatus: "Done",
-    //       });
-    //       await UserWallet.create({
-    //         orderId: "",
-    //         adminId: "",
-    //         adminName: "",
-    //         amount: points.price,
-    //         userId: userId,
-    //         userName: userData.name,
-    //         userMobile: userData.mobile,
-    //         openingBalance: "",
-    //         type: "Credit",
-    //         status: "Success",
-    //         reason: `Refer & Earn Level ${level}`,
-    //         paymode: "",
-    //         utrNo: "",
-    //         transactionDate: date,
-    //         transactionTime: time,
-    //         transactionId: transactionId,
-    //       });
-    //     }
-    //   };
+      const updateWallet = async (
+        points,
+        userId,
+        userName,
+        userMobile,
+        level
+      ) => {
+        const getTotal = (array) => {
+          let total = 0;
+          array.map((item) => {
+            if (item.type === "Credit") {
+              total += parseInt(item.amount);
+            }
+          });
+          return total;
+        };
+        const userData = await Users.findById(userId);
+        const walletAmountS = await UserWallet.find({
+          userId: userId,
+          transactionDate: date,
+        });
+        if (
+          walletAmountS === null ||
+          walletAmountS === "" ||
+          getTotal(walletAmountS) < 2001
+        ) {
+          await AdminWallet.create({
+            adminId: "670cb3f3ee78c45f512c47a9",
+            openingBalance: adminWalletAmount,
+            type: "Debit",
+            status: "Success",
+            amount: points.price,
+            userId: userId,
+            userName: userData.name,
+            userMobile: userData.mobile,
+            userWalletAmount: "",
+            reason: `Refer & Earn Level ${level}`,
+            transactionDate: date,
+            transactionTime: time,
+            transactionId: transactionId,
+            amountStatus: "Done",
+          });
+          await UserWallet.create({
+            orderId: "",
+            adminId: "",
+            adminName: "",
+            amount: points.price,
+            userId: userId,
+            userName: userData.name,
+            userMobile: userData.mobile,
+            openingBalance: "",
+            type: "Credit",
+            status: "Success",
+            reason: `Refer & Earn Level ${level}`,
+            paymode: "",
+            utrNo: "",
+            transactionDate: date,
+            transactionTime: time,
+            transactionId: transactionId,
+            cUserId: mobile,
+            cUserName: name,
+            amountStatus: "Pending",
+          });
+        }
+      };
 
-    //   const findReferPoints = async (level) => {
-    //     const points = await PointsManagament.find({
-    //       type: "Refer Earn",
-    //       level,
-    //     })
-    //       .sort({ $natural: -1 })
-    //       .limit(1);
-    //     return points[0];
-    //   };
+      const findReferPoints = async (level) => {
+        const points = await PointsManagament.find({
+          type: "Refer Earn",
+          level,
+        })
+          .sort({ $natural: -1 })
+          .limit(1);
+        return points[0];
+      };
 
-    //   if (!sponsorLevel1.level1) {
-    //     user.level1 = sponsorLevel1._id;
-    //     const referPoints = await findReferPoints("1");
-    //     await updateWallet(
-    //       referPoints,
-    //       referenceId,
-    //       referenceName,
-    //       referenceMobile,
-    //       1
-    //     );
-    //   } else if (!sponsorLevel1.level2) {
-    //     user.level2 = sponsorLevel1._id;
-    //     user.level1 = sponsorLevel1.level1;
-    //     const referPoints1 = await findReferPoints("1");
-    //     await updateWallet(
-    //       referPoints1,
-    //       referenceId,
-    //       referenceName,
-    //       referenceMobile,
-    //       1
-    //     );
+      if (!sponsorLevel1.level1) {
+        user.level1 = sponsorLevel1._id;
+        const referPoints = await findReferPoints("1");
+        await updateWallet(
+          referPoints,
+          referenceId,
+          referenceName,
+          referenceMobile,
+          1
+        );
+      } else if (!sponsorLevel1.level2) {
+        user.level1 = sponsorLevel1._id;
+        user.level2 = sponsorLevel1.level1;
+        const referPoints1 = await findReferPoints("1");
+        await updateWallet(
+          referPoints1,
+          referenceId,
+          referenceName,
+          referenceMobile,
+          1
+        );
 
-    //     const referPoints2 = await findReferPoints("2");
-    //     await updateWallet(
-    //       referPoints2,
-    //       sponsorLevel1.level1,
-    //       "level2",
-    //       "level2",
-    //       2
-    //     );
-    //   } else if (!sponsorLevel1.level3) {
-    //     user.level3 = sponsorLevel1._id;
-    //     user.level2 = sponsorLevel1.level2;
-    //     user.level1 = sponsorLevel1.level1;
-    //     const referPoints1 = await findReferPoints("1");
-    //     await updateWallet(
-    //       referPoints1,
-    //       referenceId,
-    //       referenceName,
-    //       referenceMobile,
-    //       1
-    //     );
+        const referPoints2 = await findReferPoints("2");
+        await updateWallet(
+          referPoints2,
+          sponsorLevel1.level1,
+          "level2",
+          "level2",
+          2
+        );
+      } else if (!sponsorLevel1.level3) {
+        user.level1 = sponsorLevel1._id;
+        user.level2 = sponsorLevel1.level1;
+        user.level3 = sponsorLevel1.level2;
+        const referPoints1 = await findReferPoints("1");
+        await updateWallet(
+          referPoints1,
+          referenceId,
+          referenceName,
+          referenceMobile,
+          1
+        );
 
-    //     const referPoints2 = await findReferPoints("2");
-    //     await updateWallet(
-    //       referPoints2,
-    //       sponsorLevel1.level2,
-    //       "level2",
-    //       "level2",
-    //       2
-    //     );
+        const referPoints2 = await findReferPoints("2");
+        await updateWallet(
+          referPoints2,
+          sponsorLevel1.level1,
+          "level2",
+          "level2",
+          2
+        );
 
-    //     const referPoints3 = await findReferPoints("3");
-    //     await updateWallet(
-    //       referPoints3,
-    //       sponsorLevel1.level1,
-    //       "level3",
-    //       "level3",
-    //       3
-    //     );
-    //   } else if (!sponsorLevel1.level4) {
-    //     user.level4 = sponsorLevel1._id;
-    //     user.level3 = sponsorLevel1.level3;
-    //     user.level2 = sponsorLevel1.level2;
-    //     user.level1 = sponsorLevel1.level1;
-    //     const referPoints1 = await findReferPoints("1");
-    //     await updateWallet(
-    //       referPoints1,
-    //       referenceId,
-    //       referenceName,
-    //       referenceMobile,
-    //       1
-    //     );
+        const referPoints3 = await findReferPoints("3");
+        await updateWallet(
+          referPoints3,
+          sponsorLevel1.level2,
+          "level3",
+          "level3",
+          3
+        );
+      } else if (!sponsorLevel1.level4) {
+        user.level1 = sponsorLevel1._id;
+        user.level2 = sponsorLevel1.level1;
+        user.level3 = sponsorLevel1.level2;
+        user.level4 = sponsorLevel1.level3;
+        const referPoints1 = await findReferPoints("1");
+        await updateWallet(
+          referPoints1,
+          referenceId,
+          referenceName,
+          referenceMobile,
+          1
+        );
 
-    //     const referPoints2 = await findReferPoints("2");
-    //     await updateWallet(
-    //       referPoints2,
-    //       sponsorLevel1.level3,
-    //       "level2",
-    //       "level2",
-    //       2
-    //     );
+        const referPoints2 = await findReferPoints("2");
+        await updateWallet(
+          referPoints2,
+          sponsorLevel1.level1,
+          "level2",
+          "level2",
+          2
+        );
 
-    //     const referPoints3 = await findReferPoints("3");
-    //     await updateWallet(
-    //       referPoints3,
-    //       sponsorLevel1.level2,
-    //       "level3",
-    //       "level3",
-    //       3
-    //     );
+        const referPoints3 = await findReferPoints("3");
+        await updateWallet(
+          referPoints3,
+          sponsorLevel1.level2,
+          "level3",
+          "level3",
+          3
+        );
 
-    //     const referPoints4 = await findReferPoints("4");
-    //     await updateWallet(
-    //       referPoints4,
-    //       sponsorLevel1.level1,
-    //       "level4",
-    //       "level4",
-    //       4
-    //     );
-    //   } else if (!sponsorLevel1.level5) {
-    //     user.level5 = sponsorLevel1._id;
-    //     user.level4 = sponsorLevel1.level4;
-    //     user.level3 = sponsorLevel1.level3;
-    //     user.level2 = sponsorLevel1.level2;
-    //     user.level1 = sponsorLevel1.level1;
-    //     const referPoints1 = await findReferPoints("1");
-    //     await updateWallet(
-    //       referPoints1,
-    //       referenceId,
-    //       referenceName,
-    //       referenceMobile,
-    //       1
-    //     );
+        const referPoints4 = await findReferPoints("4");
+        await updateWallet(
+          referPoints4,
+          sponsorLevel1.level3,
+          "level4",
+          "level4",
+          4
+        );
+      } else if (!sponsorLevel1.level5) {
+        user.level1 = sponsorLevel1._id;
+        user.level2 = sponsorLevel1.level1;
+        user.level3 = sponsorLevel1.level2;
+        user.level4 = sponsorLevel1.level3;
+        user.level5 = sponsorLevel1.level4;
+        const referPoints1 = await findReferPoints("1");
+        await updateWallet(
+          referPoints1,
+          referenceId,
+          referenceName,
+          referenceMobile,
+          1
+        );
 
-    //     const referPoints2 = await findReferPoints("2");
-    //     await updateWallet(
-    //       referPoints2,
-    //       sponsorLevel1.level4,
-    //       "level2",
-    //       "level2",
-    //       2
-    //     );
+        const referPoints2 = await findReferPoints("2");
+        await updateWallet(
+          referPoints2,
+          sponsorLevel1.level1,
+          "level2",
+          "level2",
+          2
+        );
 
-    //     const referPoints3 = await findReferPoints("3");
-    //     await updateWallet(
-    //       referPoints3,
-    //       sponsorLevel1.level3,
-    //       "level3",
-    //       "level3",
-    //       3
-    //     );
+        const referPoints3 = await findReferPoints("3");
+        await updateWallet(
+          referPoints3,
+          sponsorLevel1.level2,
+          "level3",
+          "level3",
+          3
+        );
 
-    //     const referPoints4 = await findReferPoints("4");
-    //     await updateWallet(
-    //       referPoints4,
-    //       sponsorLevel1.level2,
-    //       "level2",
-    //       "level2",
-    //       4
-    //     );
+        const referPoints4 = await findReferPoints("4");
+        await updateWallet(
+          referPoints4,
+          sponsorLevel1.level3,
+          "level2",
+          "level2",
+          4
+        );
 
-    //     const referPoints5 = await findReferPoints("5");
-    //     await updateWallet(
-    //       referPoints5,
-    //       sponsorLevel1.level1,
-    //       "level1",
-    //       "level1",
-    //       5
-    //     );
-    //   } else {
-    //     user.level5 = sponsorLevel1._id;
-    //     user.level4 = sponsorLevel1.level5;
-    //     user.level3 = sponsorLevel1.level4;
-    //     user.level2 = sponsorLevel1.level3;
-    //     user.level1 = sponsorLevel1.level2;
-    //     const referPoints1 = await findReferPoints("1");
-    //     await updateWallet(
-    //       referPoints1,
-    //       referenceId,
-    //       referenceName,
-    //       referenceMobile,
-    //       1
-    //     );
+        const referPoints5 = await findReferPoints("5");
+        await updateWallet(
+          referPoints5,
+          sponsorLevel1.level4,
+          "level1",
+          "level1",
+          5
+        );
+      } else {
+        user.level5 = sponsorLevel1._id;
+        user.level4 = sponsorLevel1.level2;
+        user.level3 = sponsorLevel1.level3;
+        user.level2 = sponsorLevel1.level4;
+        user.level1 = sponsorLevel1.level5;
+        const referPoints1 = await findReferPoints("1");
+        await updateWallet(
+          referPoints1,
+          referenceId,
+          referenceName,
+          referenceMobile,
+          1
+        );
 
-    //     const referPoints2 = await findReferPoints("2");
-    //     await updateWallet(
-    //       referPoints2,
-    //       sponsorLevel1.level5,
-    //       "level2",
-    //       "level2",
-    //       2
-    //     );
+        const referPoints2 = await findReferPoints("2");
+        await updateWallet(
+          referPoints2,
+          sponsorLevel1.level2,
+          "level2",
+          "level2",
+          2
+        );
 
-    //     const referPoints3 = await findReferPoints("3");
-    //     await updateWallet(
-    //       referPoints3,
-    //       sponsorLevel1.level4,
-    //       "level3",
-    //       "level3",
-    //       3
-    //     );
+        const referPoints3 = await findReferPoints("3");
+        await updateWallet(
+          referPoints3,
+          sponsorLevel1.level3,
+          "level3",
+          "level3",
+          3
+        );
 
-    //     const referPoints4 = await findReferPoints("4");
-    //     await updateWallet(
-    //       referPoints4,
-    //       sponsorLevel1.level3,
-    //       "level2",
-    //       "level2",
-    //       4
-    //     );
+        const referPoints4 = await findReferPoints("4");
+        await updateWallet(
+          referPoints4,
+          sponsorLevel1.level4,
+          "level2",
+          "level2",
+          4
+        );
 
-    //     const referPoints5 = await findReferPoints("5");
-    //     await updateWallet(
-    //       referPoints5,
-    //       sponsorLevel1.level2,
-    //       "level1",
-    //       "level1",
-    //       5
-    //     );
-    //   }
-    // }
-    // await user.save();
+        const referPoints5 = await findReferPoints("5");
+        await updateWallet(
+          referPoints5,
+          sponsorLevel1.level5,
+          "level1",
+          "level1",
+          5
+        );
+      }
+    }
 
-    // res.json({
-    //   status: 200,
-    //   result: "User created successfully",
-    // });
+    await user.save();
+
+    res.json({
+      status: 200,
+      result: "User created successfully",
+      user: user,
+    });
   } else {
     res.json({
       status: 422,
@@ -665,6 +688,7 @@ exports.WithdrawRequest = async (req, res) => {
     });
   }
 };
+
 exports.getLastRequest = async (req, res) => {
   let userId = req.body.userId;
 
@@ -806,8 +830,7 @@ exports.buyPackageRequest = async (req, res) => {
     packageId: packageId,
     packageName: packageName,
     amount: packageAmount,
-    screenshot:
-      screenshot == undefined || screenshot == "" ? "" : req.file.filename,
+    screenshot: req.file.filename,
     transactionDate: date,
     transactionTime: time,
     transactionId: transactionId,
@@ -865,7 +888,7 @@ exports.fundTransfer = async (req, res) => {
       openingBalance: "",
       type: "Debit",
       status: "Success",
-      reason: `Fund Transfer`,
+      reason: `Fund Transfer to User Id`,
       paymode: "",
       utrNo: "",
       transactionDate: date,
@@ -873,6 +896,7 @@ exports.fundTransfer = async (req, res) => {
       transactionId: transactionId,
       cUserId: selectedUser._id,
       cUserName: selectedUser.name,
+      amountStatus: "Done",
     });
     await UserWallet.create({
       orderId: "",
@@ -885,7 +909,7 @@ exports.fundTransfer = async (req, res) => {
       openingBalance: "",
       type: "Credit",
       status: "Success",
-      reason: `Fund Transfer`,
+      reason: `Fund Transfer by User Id`,
       paymode: "",
       utrNo: "",
       transactionDate: date,
@@ -893,6 +917,7 @@ exports.fundTransfer = async (req, res) => {
       transactionId: transactionId,
       cUserId: userId,
       cUserName: username,
+      amountStatus: "Done",
     });
 
     res.json({ status: 200, result: "Fund Transfer successfully" });
@@ -900,14 +925,14 @@ exports.fundTransfer = async (req, res) => {
     await AdminWallet.create({
       adminId: "670cb3f3ee78c45f512c47a9",
       openingBalance: adminWalletAmount,
-      type: "Debit",
+      type: "Credit",
       status: "Success",
       amount: points.price,
       userId: userId,
       userName: userData.name,
       userMobile: userData.mobile,
       userWalletAmount: "",
-      reason: `Fund Transfer`,
+      reason: `Fund Transfer by User`,
       transactionDate: date,
       transactionTime: time,
       transactionId: transactionId,
@@ -923,12 +948,13 @@ exports.fundTransfer = async (req, res) => {
       openingBalance: "",
       type: "Debit",
       status: "Success",
-      reason: `Fund Transfer`,
+      reason: `Fund Transfer to Admin`,
       paymode: "",
       utrNo: "",
       transactionDate: date,
       transactionTime: time,
       transactionId: transactionId,
+      amountStatus: "Done",
     });
     res.json({ status: 200, result: "Fund Transfer successfully" });
   } else if (recieverType === "PetrolCard") {
@@ -946,7 +972,7 @@ exports.fundTransfer = async (req, res) => {
       transactionDate: date,
       transactionTime: time,
       transactionId: transactionId,
-      amountStatus: "Pending",
+      amountStatus: "Done",
     });
     await UserWallet.create({
       adminId: "670cb3f3ee78c45f512c47a9",
@@ -958,12 +984,49 @@ exports.fundTransfer = async (req, res) => {
       openingBalance: "",
       type: "Debit",
       status: "Success",
-      reason: `Fund Transfer`,
+      reason: `Fund Transfer in Petrol Card`,
       paymode: "",
       utrNo: "",
       transactionDate: date,
       transactionTime: time,
       transactionId: transactionId,
+      amountStatus: "Done",
+    });
+    res.json({ status: 200, result: "Fund Transfer successfully" });
+  } else if (recieverType === "PrepaidCard") {
+    await PrepaidCardWallet.create({
+      adminId: "",
+      adminName: "",
+      amount: amount,
+      userId: userId,
+      userName: username,
+      userMobile: mobile,
+      openingBalance: "",
+      type: "Credit",
+      status: "Success",
+      reason: `Fund Transfer in Prepaid Card`,
+      transactionDate: date,
+      transactionTime: time,
+      transactionId: transactionId,
+      amountStatus: "Done",
+    });
+    await UserWallet.create({
+      adminId: "670cb3f3ee78c45f512c47a9",
+      adminName: "Admin",
+      amount: amount,
+      userId: userId,
+      userName: username,
+      userMobile: mobile,
+      openingBalance: "",
+      type: "Debit",
+      status: "Success",
+      reason: `Fund Transfer in Prepaid Card`,
+      paymode: "",
+      utrNo: "",
+      transactionDate: date,
+      transactionTime: time,
+      transactionId: transactionId,
+      amountStatus: "Done",
     });
     res.json({ status: 200, result: "Fund Transfer successfully" });
   }
@@ -975,6 +1038,24 @@ exports.userPetrolCardWallet = async (req, res) => {
 
   if (checkPro.length > 0) {
     let walletData = await PetrolCardWallet.find({ userId: userId }).sort({
+      $natural: -1,
+    });
+    if (walletData) {
+      res.json({ status: 200, result: walletData });
+    } else {
+      res.json({ status: 422, result: "Item not Found" });
+    }
+  } else {
+    res.json({ status: 422, result: "Item not Exists" });
+  }
+};
+
+exports.userPrepaidCardWallet = async (req, res) => {
+  const userId = req.body.userId;
+  let checkPro = await PrepaidCardWallet.find({ userId: userId });
+
+  if (checkPro.length > 0) {
+    let walletData = await PrepaidCardWallet.find({ userId: userId }).sort({
       $natural: -1,
     });
     if (walletData) {

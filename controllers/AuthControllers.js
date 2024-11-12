@@ -61,6 +61,9 @@ exports.AdminLogin = async (req, res) => {
   let username = req.body.username;
   let hash = req.body.password;
 
+  console.log(hash);
+  
+
   const admins = await Admins.findOne({ email: username });
 
   if (admins !== null || admins !== "") {

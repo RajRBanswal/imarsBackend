@@ -13,12 +13,15 @@ const userCashbackWalletSchema = new mongoose.Schema(
     openingBalance: Number,
     type: String,
     status: String,
+    amountStatus: String,
     paymode: String,
     utrNo: String,
     transactionDate: String,
     transactionTime: String,
     reason: String,
     transactionId: String,
+    cUserId: String,
+    cUserName: String,
   },
   { timestamps: true }
 );

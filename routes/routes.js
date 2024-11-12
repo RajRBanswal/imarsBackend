@@ -15,6 +15,7 @@ const {
   addAdminWallet,
   getPackageRequest,
   acceptPackageRequest,
+  AdminUpdateUserProfile,
 } = require("../controllers/AdminControllers");
 const {
   getUserProfile,
@@ -36,6 +37,7 @@ const {
   updateBankDetails,
   fundTransfer,
   userPetrolCardWallet,
+  userPrepaidCardWallet,
 } = require("../controllers/UserControllers");
 const router = express.Router();
 
@@ -90,6 +92,8 @@ router.post("/api/users/fund-tranfer", fundTransfer);
 
 router.post("/api/users/user-petrol-card-wallet", userPetrolCardWallet);
 
+router.post("/api/users/user-prepaid-card-wallet", userPrepaidCardWallet);
+
 // Admin Routes
 router.post("/api/admin/admin-login", AdminLogin);
 
@@ -126,5 +130,8 @@ router.post("/api/admin/add-admin-wallet", addAdminWallet);
 router.get("/api/admin/all-package-request", getPackageRequest);
 
 router.post("/api/admin/accept-package-request", acceptPackageRequest);
+
+router.post("/api/admin/user-update", AdminUpdateUserProfile);
+
 
 module.exports = router;

@@ -6,6 +6,7 @@ const WithdrawRequest = require("../modal/withdrawRequestSchema");
 const UserWallet = require("../modal/userWalletSchema");
 const TopUpRequest = require("../modal/topUpRequestSchema");
 const PackageRequest = require("../modal/packageRequestSchema");
+const UserCashbackWallet = require("../modal/userCashbackWalletSchema");
 
 exports.getAllUsers = async (req, res) => {
   try {
@@ -362,12 +363,10 @@ exports.getPackageRequest = async (req, res) => {
 exports.acceptPackageRequest = async (req, res) => {
   let { id, userId, amount, packageId, packageName } = req.body;
 
-  
-  
   const userExists = await Users.findOne({ _id: userId })
-  .select("-password")
-  .select("-tokens");
-  
+    .select("-password")
+    .select("-tokens");
+
   if (userExists) {
     const user = await PackageRequest.findByIdAndUpdate(
       { _id: id },
@@ -379,7 +378,7 @@ exports.acceptPackageRequest = async (req, res) => {
       }
     );
     if (user) {
-      await Users.findByIdAndUpdate(
+      let update = await Users.findByIdAndUpdate(
         { _id: userId },
         {
           packageId: packageId,
@@ -388,10 +387,43 @@ exports.acceptPackageRequest = async (req, res) => {
           kycstatus: "Done",
         }
       );
-      res.json({
-        status: 200,
-        result: "Request accepted successfully",
-      });
+      if (update) {
+        let yess = await UserWallet.find({
+          cUserId: userExists.mobile,
+          type: "Credit",
+          amountStatus: "Pending",
+        });
+        yess.map(async (item) => {
+          await UserWallet.findByIdAndUpdate(
+            {
+              _id: item._id,
+              type: "Credit",
+              amountStatus: "Pending",
+            },
+            { amountStatus: "Done" }
+          );
+        });
+        let CBWallet = await UserCashbackWallet.find({
+          cUserId: userExists.mobile,
+          type: "Credit",
+          amountStatus: "Pending",
+        });
+        CBWallet.map(async (items) => {
+          await UserCashbackWallet.findByIdAndUpdate(
+            {
+              _id: items._id,
+              type: "Credit",
+              amountStatus: "Pending",
+            },
+            { amountStatus: "Done" }
+          );
+        });
+
+        res.json({
+          status: 200,
+          result: "Request accepted successfully",
+        });
+      }
     } else {
       res.json({
         status: 422,
@@ -403,5 +435,48 @@ exports.acceptPackageRequest = async (req, res) => {
       status: 422,
       result: "User not found",
     });
+  }
+};
+
+exports.AdminUpdateUserProfile = async (req, res) => {
+  let { names, emails, mobiles, addresss, talukas, citys, states, pincodes } =
+    "";
+  console.log(req.body);
+
+  const { userId, name, email, mobile, address, taluka, city, state, pincode } =
+    req.body;
+
+  const userExists = await Users.findOne({ _id: userId });
+
+  if (userExists) {
+    name ? (names = name) : (names = userExists.name);
+    email ? (emails = email) : (emails = userExists.email);
+    mobile ? (mobiles = mobile) : (mobiles = userExists.mobile);
+    address ? (addresss = address) : (addresss = userExists.address);
+    taluka ? (talukas = taluka) : (talukas = userExists.taluka);
+    city ? (citys = city) : (citys = userExists.city);
+    state ? (states = state) : (states = userExists.state);
+    pincode ? (pincodes = pincode) : (pincodes = userExists.pincode);
+
+    const user = await Users.findOneAndUpdate(
+      { _id: userId },
+      {
+        name: names,
+        email: emails,
+        mobile: mobiles,
+        address: addresss,
+        taluka: talukas,
+        city: citys,
+        state: states,
+        pincode: pincodes,
+      }
+    );
+    if (user) {
+      res.json({ status: 200, result: "User Updated successfully" });
+    } else {
+      res.json({ status: 422, result: "User not updated" });
+    }
+  } else {
+    res.json({ status: 422, result: "User not exists" });
   }
 };
